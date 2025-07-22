@@ -23,8 +23,8 @@ jobs:
       - name: Run Datadog Static Analyzer
         uses: DataDog/datadog-static-analyzer-github-action@main
         with:
-          dd_app_key: ${{ secrets.DD_APP_KEY }}
-          dd_api_key: ${{ secrets.DD_API_KEY }}
+          dd_app_key: ${{ secrets.DATADOG_API_KEY_MAIN_ACCOUNT }}
+          dd_api_key: ${{ secrets.DATADOG_API_KEY_MAIN_ACCOUNT }}
           dd_site: datadoghq.com
           cpu_count: 2
           diff_aware: true
@@ -56,6 +56,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Enable Corepack and set Yarn 3.4.1
+        run: |
+          corepack enable
+          corepack prepare yarn@3.4.1 --activate
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
