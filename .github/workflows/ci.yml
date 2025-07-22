@@ -7,47 +7,90 @@ on:
   pull_request:
 
 jobs:
-  datadog-static-analysis:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [18, 20, 22]
+
+    name: Build and test
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
+      - uses: actions/checkout@v4
+      - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Lint Code
+          node-version: ${{ matrix.version }}
+      - run: yarn install --immutable
+      - run: yarn build
+      - name: Run yarn lint:ci
         run: |
-          yarn lint:ci || true
+          if ! yarn lint:ci ; then
+            echo "ESLint failed with the following errors:"
+            jq '.runs[].results' sarif-datadog-ci.sarif
 
-      - name: Run Datadog Static Analyzer
+            echo ""
+            echo "Find the full SARIF report in the Artifacts section here: https://github.com/DataDog/datadog-ci/actions/runs/${{ github.run_id }}"
+            echo "You can fix this by running ==> yarn format <=="
+            echo ""
+            exit 1
+          fi
+      - run: yarn no-only-in-tests
+
+      - run: yarn test
+        env:
+          CI: true
+          DD_SERVICE: datadog-ci-tests
+          DD_CIVISIBILITY_AGENTLESS_ENABLED: 1
+          DD_API_KEY: ${{ secrets.DATADOG_API_KEY_MAIN_ACCOUNT }}
+          DD_APP_KEY: ${{ secrets.DATADOG_APP_KEY_MAIN_ACCOUNT }}
+          DD_ENV: ci
+          NODE_OPTIONS: -r dd-trace/ci/init
+      - run: mkdir artifacts
+      - run: yarn pack --filename artifacts/datadog-ci-${{ matrix.version }}.tgz
+      - run: cp -r .github/workflows/e2e artifacts/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-${{ matrix.version }}
+          path: artifacts/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sarif-datadog-ci-${{ matrix.version }}.sarif
+          path: sarif-datadog-ci.sarif
+          if-no-files-found: error
+
+  datadog-static-analyzer:
+    runs-on: ubuntu-latest
+    name: Static Analyzer - Diff Aware
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run Datadog static analyzer
+        id: datadog-static-analysis
         uses: DataDog/datadog-static-analyzer-github-action@main
         with:
-          dd_api_key: ${{ secrets.DATADOG_API_KEY }}
-          dd_app_key: ${{ secrets.DATADOG_APP_KEY }}
-          dd_site: us5.datadoghq.com
-          static_analysis_enabled: true
+          dd_app_key: ${{ secrets.DATADOG_APP_KEY_MAIN_ACCOUNT }}
+          dd_api_key: ${{ secrets.DATADOG_API_KEY_MAIN_ACCOUNT }}
+          dd_service: 'datadog-ci'
+          dd_env: 'ci'
           cpu_count: 2
           diff_aware: true
+          dd_site: us5.datadoghq.com
 
   check-licenses:
     name: Check licenses
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - name: Enable Corepack and Install node
-        run: |
-          corepack enable
-          corepack prepare yarn@3.4.1 --activate
-      - uses: actions/setup-node@v4
+      - name: Install node
+        uses: actions/setup-node@v4
         with:
           node-version: 20.11.0
+      # The install step has been added here such that the `.yarn/install-state.gz` file is generated. This file is used
+      # by the script `check-licenses` below.
       - run: yarn install --immutable
       - run: yarn check-licenses
 
