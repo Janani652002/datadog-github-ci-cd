@@ -8,31 +8,33 @@ on:
 
 jobs:
   datadog-static-analysis:
-    name: Datadog Static Analyzer
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint Code
+        run: |
+          yarn lint:ci || true
 
       - name: Run Datadog Static Analyzer
         uses: DataDog/datadog-static-analyzer-github-action@main
         with:
-          dd_app_key: ${{ secrets.DATADOG_API_KEY_MAIN_ACCOUNT }}
-          dd_api_key: ${{ secrets.DATADOG_API_KEY_MAIN_ACCOUNT }}
+          dd_api_key: ${{ secrets.DATADOG_API_KEY }}
+          dd_app_key: ${{ secrets.DATADOG_APP_KEY }}
           dd_site: us5.datadoghq.com
+          static_analysis_enabled: true
           cpu_count: 2
           diff_aware: true
-          enable_performance_statistics: false
-          debug: no
-          secrets_enabled: false
-          static_analysis_enabled: true
-          architecture: x86_64
 
   check-licenses:
     name: Check licenses
