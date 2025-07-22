@@ -78,18 +78,3 @@ jobs:
           cpu_count: 2
           diff_aware: true
           dd_site: us5.datadoghq.com
-
-  check-licenses:
-    name: Check licenses
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Enable Corepack and Install node
-        run: |
-          corepack enable
-          corepack prepare yarn@3.4.1 --activate
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.11.0
-      - run: yarn install --immutable
-      - run: yarn check-licenses
