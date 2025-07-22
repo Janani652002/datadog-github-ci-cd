@@ -25,7 +25,7 @@ jobs:
         with:
           dd_app_key: ${{ secrets.DATADOG_API_KEY_MAIN_ACCOUNT }}
           dd_api_key: ${{ secrets.DATADOG_API_KEY_MAIN_ACCOUNT }}
-          dd_site: datadoghq.com
+          dd_site: us5.datadoghq.com
           cpu_count: 2
           diff_aware: true
           enable_performance_statistics: false
@@ -57,7 +57,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Enable Corepack and set Yarn 3.4.1
+      - name: Enable Corepack and Set Yarn 3.4.1
         run: |
           corepack enable
           corepack prepare yarn@3.4.1 --activate
@@ -68,7 +68,7 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: yarn install
+        run: yarn install --immutable
 
       - name: Run ESLint + Prettier Check
         run: |
